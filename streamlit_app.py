@@ -19,10 +19,9 @@ openai.api_key = api_key
 def load_data():
     df_chat = pd.read_csv("ClothesShopChatbotDataset.csv")
     df_styles = pd.read_csv("styles.csv")
-    df_aug=pd.read_csv("ClothesShopChatbotDataset_augmented.csv")
-    return df_chat, df_styles,df_aug
+   return df_chat, df_styles
 
-df_chat, df_styles,df_aug = load_data()
+df_chat, df_styles = load_data()
 
 # Chat Interface
 user_input = st.text_input("👤 You:", placeholder="Ask me anything about fashion...")
