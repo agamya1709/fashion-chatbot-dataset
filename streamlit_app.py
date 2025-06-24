@@ -11,7 +11,9 @@ api_key = st.sidebar.text_input("🔑 Enter your OpenAI API Key", type="password
 if not api_key:
     st.warning("Please enter your OpenAI API key to continue.")
     st.stop()
-openai.api_key = api_key
+
+# ✅ Create OpenAI client (new SDK >=1.0)
+client = openai.OpenAI(api_key=api_key)
 
 # Upload CSVs
 st.sidebar.subheader("📂 Upload Your CSV Files")
@@ -41,26 +43,26 @@ query = st.text_input("Ask me anything about your orders, returns, styles...")
 dataset_choice = st.radio("📄 Choose a dataset to chat with:", ["Original", "Augmented"])
 selected_df = original_df if dataset_choice == "Original" else augmented_df
 
-# Get OpenAI embedding
+# Get OpenAI embedding using v1.0+ SDK
 def get_embedding(text):
     try:
-        response = openai.Embedding.create(
+        response = client.embeddings.create(
             input=text,
             model="text-embedding-ada-002"
         )
-        return response["data"][0]["embedding"]
+        return response.data[0].embedding
     except Exception as e:
         st.error(f"Embedding error: {e}")
         return None
 
-# Cosine similarity (manual version without sklearn)
+# Cosine similarity (manual version)
 def cosine_sim(a, b):
     a, b = np.array(a), np.array(b)
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
-# Handle query
+# Handle user query
 if query and selected_df is not None:
-    st.info("🔍 Matching your query with most relevant answer...")
+    st.info("🔍 Matching your query with the most relevant answer...")
     try:
         user_emb = get_embedding(query)
         best_score = -1
@@ -88,7 +90,7 @@ if query and selected_df is not None:
 else:
     st.caption("👆 Upload CSVs and ask a question to begin.")
 
-# Show previews (optional)
+# Show previews
 if styles_df is not None:
     st.subheader("👗 Style Dataset Preview")
     st.dataframe(styles_df.head())
@@ -100,12 +102,3 @@ if original_df is not None and augmented_df is not None:
         col1.dataframe(original_df.sample(5))
         col2.write("📄 Augmented")
         col2.dataframe(augmented_df.sample(5))
-
-
-
-
-
-
-
-
-
