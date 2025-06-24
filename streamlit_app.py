@@ -1,54 +1,43 @@
 import streamlit as st
 import pandas as pd
-import openai
-import os
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
-# App title
-st.title("🛍️ Fashion Chatbot")
-
-# Sidebar: API Key input
-api_key = st.sidebar.text_input("Enter your OpenAI API Key", type="password")
-
-if not api_key:
-    st.warning("Please enter your OpenAI API key to continue.")
-    st.stop()
-
-openai.api_key = api_key
-
-# Load datasets
+# Load augmented chatbot dataset and styles
 @st.cache_data
 def load_data():
-    df_chat = pd.read_csv("ClothesShopChatbotDataset.csv")
-    df_styles = pd.read_csv("styles.csv")
     df_aug = pd.read_csv("ClothesShopChatbotDataset_augmented.csv")
-    return df_chat, df_styles, df_aug
+    df_styles = pd.read_csv("styles.csv")
+    return df_aug, df_styles
 
-df_chat, df_styles, df_aug = load_data()
+df_aug, df_styles = load_data()
 
+# Preprocess and vectorize chatbot questions
+questions = df_aug['question'].fillna("").tolist()
+answers = df_aug['answer'].fillna("").tolist()
+vectorizer = TfidfVectorizer().fit(questions)
+question_vectors = vectorizer.transform(questions)
 
-df_all = pd.concat([df_chat, df_aug], ignore_index=True)
+# Streamlit UI
+st.title("🧥 Fashion Chatbot")
+st.write("Ask me anything related to fashion, clothing, or style suggestions!")
 
-# Chat Interface
-user_input = st.text_input("👤 You:", placeholder="Ask me anything about fashion...")
+user_input = st.text_input("You:", "What should I wear for a wedding?")
 
 if user_input:
-    with st.spinner("Thinking..."):
-        # Prepare chat context using all available Q&A pairs
-        context = "\n".join(
-            df_all["Question"] + ": " + df_all["Answer"]
-        )
-        prompt = f"{context}\nUser: {user_input}\nBot:"
+    # Vectorize user query and compute similarity
+    input_vector = vectorizer.transform([user_input])
+    similarity_scores = cosine_similarity(input_vector, question_vectors)
+    best_idx = similarity_scores.argmax()
+    best_response = answers[best_idx]
 
-        try:
-            response = openai.Completion.create(
-                engine="text-davinci-003",  # You can change this to gpt-3.5-turbo with a different API call
-                prompt=prompt,
-                max_tokens=150,
-                temperature=0.7
-            )
-            bot_response = response.choices[0].text.strip()
-            st.success(f"🤖 Bot: {bot_response}")
+    st.markdown("**Chatbot:** " + best_response)
 
-        except Exception as e:
-            st.error(f"⚠️ Error: {str(e)}")
+    # Optional: fashion style matching
+    if "recommend" in user_input.lower() or "wear" in user_input.lower():
+        st.subheader("👗 Suggested Styles")
+        suggested_styles = df_styles.sample(3)  # You can add logic to match styles by occasion/type
+        for _, row in suggested_styles.iterrows():
+            st.markdown(f"**{row['style_name']}** - {row['description']}")
+
 
