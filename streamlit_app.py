@@ -1,27 +1,19 @@
 import streamlit as st
 import pandas as pd
-import openai
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
-st.set_page_config(page_title="🛍️ Fashion Chatbot", layout="wide")
-st.title("🧠 Fashion Support Chatbot")
-
-# Sidebar: API Key input
-api_key = st.sidebar.text_input("🔑 Enter your OpenAI API Key", type="password")
-if not api_key:
-    st.warning("Please enter your OpenAI API key to continue.")
-    st.stop()
-
-# ✅ Create OpenAI client (new SDK >=1.0)
-client = openai.OpenAI(api_key=api_key)
+st.set_page_config(page_title="🛍️ Local Fashion Chatbot", layout="wide")
+st.title("🤖 Offline Fashion Chatbot (No Billing Needed)")
 
 # Upload CSVs
-st.sidebar.subheader("📂 Upload Your CSV Files")
+st.sidebar.header("📂 Upload Your Files")
 styles_file = st.sidebar.file_uploader("Upload `styles.csv`", type="csv")
 original_file = st.sidebar.file_uploader("Upload `ClothesShopChatbotDataset.csv`", type="csv")
 augmented_file = st.sidebar.file_uploader("Upload `ClothesShopChatbotDataset_augmented.csv`", type="csv")
 
-# Helper: load CSV
+# Load CSVs
 def load_csv(file, name):
     try:
         df = pd.read_csv(file)
@@ -31,74 +23,40 @@ def load_csv(file, name):
         st.sidebar.error(f"❌ Failed to load {name}: {e}")
         return None
 
-# Load datasets
 styles_df = load_csv(styles_file, "styles.csv") if styles_file else None
-original_df = load_csv(original_file, "Chatbot Dataset") if original_file else None
+original_df = load_csv(original_file, "Original Chatbot Dataset") if original_file else None
 augmented_df = load_csv(augmented_file, "Augmented Chatbot Dataset") if augmented_file else None
 
 # Select dataset
-st.subheader("💬 Chat with the Bot")
-query = st.text_input("Ask me anything about your orders, returns, styles...")
-
-dataset_choice = st.radio("📄 Choose a dataset to chat with:", ["Original", "Augmented"])
+dataset_choice = st.radio("🧠 Choose dataset to use:", ["Original", "Augmented"])
 selected_df = original_df if dataset_choice == "Original" else augmented_df
 
-# Get OpenAI embedding using v1.0+ SDK
-def get_embedding(text):
-    try:
-        response = client.embeddings.create(
-            input=text,
-            model="text-embedding-ada-002"
-        )
-        return response.data[0].embedding
-    except Exception as e:
-        st.error(f"Embedding error: {e}")
-        return None
+# Load embedding model
+@st.cache_resource
+def load_model():
+    return SentenceTransformer('all-MiniLM-L6-v2')
 
-# Cosine similarity (manual version)
-def cosine_sim(a, b):
-    a, b = np.array(a), np.array(b)
-    return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+model = load_model()
 
-# Handle user query
+# Handle chat
+query = st.text_input("💬 Ask something about orders, returns, style, etc...")
+
 if query and selected_df is not None:
-    st.info("🔍 Matching your query with the most relevant answer...")
-    try:
-        user_emb = get_embedding(query)
-        best_score = -1
-        best_match = None
+    with st.spinner("Thinking..."):
+        questions = selected_df["Question"].fillna("").tolist()
+        answers = selected_df["Answer"].fillna("").tolist()
+        query_embedding = model.encode([query])
+        question_embeddings = model.encode(questions)
+        scores = cosine_similarity(query_embedding, question_embeddings)[0]
+        top_idx = np.argmax(scores)
 
-        for _, row in selected_df.iterrows():
-            question = row["Question"]
-            emb = get_embedding(question)
-            if emb:
-                score = cosine_sim(user_emb, emb)
-                if score > best_score:
-                    best_score = score
-                    best_match = row
+        st.success(f"🤖 {answers[top_idx]}")
+        with st.expander("🔍 Matched Question"):
+            st.markdown(questions[top_idx])
+        st.caption(f"🧠 Similarity: {round(scores[top_idx], 2)}")
 
-        if best_match is not None:
-            st.success(f"🤖 **Answer**: {best_match['Answer']}")
-            with st.expander("📝 Matched Question"):
-                st.markdown(best_match["Question"])
-            st.caption(f"🧠 Similarity score: {round(best_score, 2)}")
-        else:
-            st.warning("❓ No suitable answer found.")
-
-    except Exception as e:
-        st.error(f"Something went wrong: {e}")
-else:
-    st.caption("👆 Upload CSVs and ask a question to begin.")
-
-# Show previews
+# Show style preview
 if styles_df is not None:
     st.subheader("👗 Style Dataset Preview")
     st.dataframe(styles_df.head())
 
-if original_df is not None and augmented_df is not None:
-    with st.expander("🆚 Compare Original and Augmented Chatbot Data"):
-        col1, col2 = st.columns(2)
-        col1.write("📄 Original")
-        col1.dataframe(original_df.sample(5))
-        col2.write("📄 Augmented")
-        col2.dataframe(augmented_df.sample(5))
