@@ -11,13 +11,32 @@ An intelligent fashion chatbot that answers customer queries and suggests clothi
 
 - `ClothesShopChatbotDataset_augmented.csv` – preprocessed Q&A for chatbot training
 - `styles.csv` – metadata for real-world fashion items (category, gender, name)
+- ClothesShopChatbotDataset.csv
 
 
 ## 🛠️ Tech Stack
+Category                       Tools Used
 
-- Python 3
-- Streamlit
-- Pandas
-- upyterLite (runs Python code in browser)
+Programming                    Python 3.x
+
+Notebook Support               JupyterLite
+
+Frontend                       Streamlit
+
+Data Handling                  Pandas
+
+Dataset Storage                ClothesShopChatbotDataset_augmented.csv, styles.csv,ClothesShopChatbotDataset.csv
+
+📝 **Data Handling**
+
+-chatbot_dataset: Contains augmented customer queries with "Question", "Answer", and "Context" fields for common retail interactions.
+-styles.csv: Filterable by gender, masterCategory, and productDisplayName. Used to recommend fashion items.
+-Null Handling: Rows with missing essential fields are dropped using dropna().
+-Style Sampling: Random top-5 matches are returned based on the inferred gender/category of query.
+
+🚚 **Deployment Options**
+
+✅ Streamlit Cloud
+✅ GitHub Pages (JupyterLite notebooks)
 
   
