@@ -62,8 +62,6 @@ If not matched → Analyzes query for gender/category → Samples matching produ
 
 🔧 **Setup Instructions**
 
-🔗 **Clone the Repository**
-git clone https://github.com/yourusername/fashion-assistant-chatbot.git
 cd fashion-assistant-chatbot
 📦 **Install Dependencies**
 pip install -r requirements.txt
