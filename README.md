@@ -13,7 +13,6 @@ An intelligent fashion chatbot that answers customer queries and suggests clothi
 - `styles.csv` – metadata for real-world fashion items (category, gender, name)
 - ClothesShopChatbotDataset.csv
 
-
 ## 🛠️ Tech Stack
 Category                       Tools Used
 
